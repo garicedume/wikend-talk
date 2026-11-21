@@ -1,38 +1,180 @@
-.App {
-  text-align: center;
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --font-main: 'Poppins', sans-serif;
+  --bg-gradient: radial-gradient(circle at center, #0f2027, #203a43, #020405);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-header: rgba(0, 0, 0, 0.4);
+  --accent-neon: #00ff88;
+  --accent-glow: rgba(0, 255, 136, 0.4);
+  --accent-wa-glass: linear-gradient(135deg, #25d366, #128c7e);
+  --accent-wa-border: rgba(37, 211, 102, 0.5);
+  --accent-wa-hover: linear-gradient(135deg, #2cfc7d, #16a394);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --danger-glass: rgba(239, 68, 68, 0.15);
+  --danger-border: rgba(239, 68, 68, 0.3);
 }
 
-.App-logo {
-  height: 40vmin;
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+  50% { transform: translateY(-20px) rotate(10deg); opacity: 0.5; }
+  100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 5px var(--accent-glow); }
+  50% { box-shadow: 0 0 20px var(--accent-glow); }
+  100% { box-shadow: 0 0 5px var(--accent-glow); }
+}
+
+@keyframes bg-slide {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.particle {
+  position: absolute;
   pointer-events: none;
+  background: var(--accent-neon);
+  border-radius: 50%;
+  filter: blur(2px);
+  animation: float 6s infinite ease-in-out;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.emoji-float {
+  position: absolute;
+  font-size: 1.5rem;
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(0.5);
+  animation: float 8s infinite ease-in-out;
 }
 
-.App-header {
-  background-color: #282c34;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-main);
+}
+
+body {
+  background: var(--bg-gradient);
+  color: var(--text-primary);
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255,255,255,0.05);
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+.glass-card-header {
+  background: var(--glass-header);
+  padding: 24px 24px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-neon);
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.glass-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 13px 16px;
+  color: #fff;
+  font-size: 0.92rem;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: var(--accent-wa-border);
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.12);
+}
+
+.btn-glass-wa {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--accent-wa-glass);
+  background-size: 200% 200%;
+  border: 1px solid var(--accent-wa-border);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 12px;
+  box-shadow: 0 10px 20px rgba(18, 140, 126, 0.2);
+  animation: bg-slide 3s infinite;
 }
 
-.App-link {
-  color: #61dafb;
+.btn-glass-wa:hover {
+  background: var(--accent-wa-hover);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(37, 211, 102, 0.3);
+  animation: pulse-glow 2s infinite ease-in-out;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.btn-glass-wa:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.btn-glass-secondary {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-glass-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.age-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(2, 4, 5, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
 }
