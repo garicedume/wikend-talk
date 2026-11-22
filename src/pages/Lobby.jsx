@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import wikendLogo from '../assets/wikentalk_logo.svg';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:5000');
+const SERVER_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const socket = io(SERVER_URL, {
+  path: '/socket.io',
+  transports: ['websocket', 'polling']
+});
 
 const INITIAL_GROUPS = [
   { id: 'g1', name: 'La Zona Cero', tag: 'Sin Filtros', desc: 'Zona ultra confidencial donde absolutamente todo se dice sin censura previa y nada queda grabado en historiales permanentes. Solo para mentes abiertas.', active: 0, max: 15 },
@@ -33,6 +37,18 @@ export default function Lobby({
   const [inputText, setInputText] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Detección de pantalla móvil y control de vista activa en celular
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat' | 'info'
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Obtener la foto real del usuario (soporta photo, photoURL o avatar) con respaldo de iniciales
   const currentUserPhoto = user?.photo || user?.photoURL || user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=f3cf1f&color=161517&bold=true`;
@@ -156,10 +172,14 @@ export default function Lobby({
     u.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const showCol1 = !isMobile || mobileView === 'list';
+  const showCol2 = !isMobile || mobileView === 'chat';
+  const showCol3 = !isMobile || mobileView === 'info';
+
   return (
     <div style={{
       width: '100vw',
-      height: '100vh',
+      height: '100dvh',
       background: '#161517',
       color: '#f3f4f6',
       display: 'flex',
@@ -177,12 +197,12 @@ export default function Lobby({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 24px',
+        padding: isMobile ? '0 12px' : '0 24px',
         boxSizing: 'border-box',
         flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <img src={wikendLogo} alt="WIKEND Talk" style={{ height: '40px', width: 'auto' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px' }}>
+          <img src={wikendLogo} alt="WIKEND Talk" style={{ height: isMobile ? '32px' : '40px', width: 'auto' }} />
           <span style={{
             fontSize: '0.7rem',
             fontWeight: 700,
@@ -198,7 +218,7 @@ export default function Lobby({
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px' }}>
           {/* Perfil de usuario con foto real clickeable para abrir Ajustes */}
           <div
             onClick={onOpenSettings}
@@ -208,7 +228,7 @@ export default function Lobby({
               gap: '10px',
               cursor: 'pointer',
               background: 'rgba(243, 207, 31, 0.1)',
-              padding: '6px 14px',
+              padding: isMobile ? '4px 10px' : '6px 14px',
               borderRadius: '99px',
               border: '1px solid #f3cf1f',
               transition: 'all 0.2s ease'
@@ -229,7 +249,17 @@ export default function Lobby({
                 border: '2px solid #ff2a95'
               }}
             />
-            <span style={{ fontSize: '0.9rem', color: '#f3cf1f', fontWeight: 700 }}>{user.username}</span>
+            <span style={{
+              fontSize: '0.9rem',
+              color: '#f3cf1f',
+              fontWeight: 700,
+              maxWidth: isMobile ? '85px' : 'none',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {user.username}
+            </span>
           </div>
 
           <button
@@ -239,7 +269,7 @@ export default function Lobby({
               background: 'rgba(255, 42, 149, 0.15)',
               border: '1px solid #ff2a95',
               color: '#ff2a95',
-              padding: '8px 14px',
+              padding: isMobile ? '8px 10px' : '8px 14px',
               borderRadius: '10px',
               fontSize: '0.82rem',
               fontWeight: 700,
@@ -247,7 +277,7 @@ export default function Lobby({
               boxShadow: '0 2px 8px rgba(255, 42, 149, 0.2)'
             }}
           >
-            🚪 Salir
+            {isMobile ? '🚪' : '🚪 Salir'}
           </button>
         </div>
       </nav>
@@ -261,492 +291,571 @@ export default function Lobby({
         boxSizing: 'border-box'
       }}>
         {/* COLUMNA 1: Lista de Grupos */}
-        <aside style={{
-          width: '360px',
-          background: '#161517',
-          borderRight: '2px solid rgba(243, 207, 31, 0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          flexShrink: '0'
-        }}>
-          {/* Pestañas de Navegación Estilo Anticipación */}
-          <div style={{
-            padding: '16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        {showCol1 && (
+          <aside style={{
+            width: isMobile ? '100%' : '360px',
+            background: '#161517',
+            borderRight: isMobile ? 'none' : '2px solid rgba(243, 207, 31, 0.2)',
             display: 'flex',
-            gap: '8px'
+            flexDirection: 'column',
+            flexShrink: '0',
+            boxSizing: 'border-box'
           }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('groups')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '10px',
-                border: activeTab === 'groups' ? '2px solid #ff2a95' : '1px solid rgba(255,255,255,0.1)',
-                background: activeTab === 'groups' ? '#f3cf1f' : 'rgba(255,255,255,0.04)',
-                color: activeTab === 'groups' ? '#161517' : '#9ca3af',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'groups' ? '0 4px 12px rgba(255, 42, 149, 0.3)' : 'none'
-              }}
-            >
-              👥 Grupos ({groups.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('users')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '10px',
-                border: activeTab === 'users' ? '2px solid #ff2a95' : '1px solid rgba(255,255,255,0.1)',
-                background: activeTab === 'users' ? '#f3cf1f' : 'rgba(255,255,255,0.04)',
-                color: activeTab === 'users' ? '#161517' : '#9ca3af',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'users' ? '0 4px 12px rgba(255, 42, 149, 0.3)' : 'none'
-              }}
-            >
-              💬 Conectados ({realOnlineUsers.length})
-            </button>
-          </div>
+            {/* Pestañas de Navegación */}
+            <div style={{
+              padding: '16px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('groups')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '10px',
+                  border: activeTab === 'groups' ? '2px solid #ff2a95' : '1px solid rgba(255,255,255,0.1)',
+                  background: activeTab === 'groups' ? '#f3cf1f' : 'rgba(255,255,255,0.04)',
+                  color: activeTab === 'groups' ? '#161517' : '#9ca3af',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: activeTab === 'groups' ? '0 4px 12px rgba(255, 42, 149, 0.3)' : 'none'
+                }}
+              >
+                👥 Grupos ({groups.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('users')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '10px',
+                  border: activeTab === 'users' ? '2px solid #ff2a95' : '1px solid rgba(255,255,255,0.1)',
+                  background: activeTab === 'users' ? '#f3cf1f' : 'rgba(255,255,255,0.04)',
+                  color: activeTab === 'users' ? '#161517' : '#9ca3af',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: activeTab === 'users' ? '0 4px 12px rgba(255, 42, 149, 0.3)' : 'none'
+                }}
+              >
+                💬 Conectados ({realOnlineUsers.length})
+              </button>
+            </div>
 
-          {/* Buscador */}
-          <div style={{ padding: '12px 16px' }}>
-            <input
-              type="text"
-              placeholder={activeTab === 'groups' ? 'Buscar grupos...' : 'Buscar usuarios...'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                background: '#090c0e',
-                border: '1px solid #f3cf1f',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                color: '#fff',
-                fontSize: '0.85rem',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
+            {/* Buscador */}
+            <div style={{ padding: '12px 16px' }}>
+              <input
+                type="text"
+                placeholder={activeTab === 'groups' ? 'Buscar grupos...' : 'Buscar usuarios...'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: '#090c0e',
+                  border: '1px solid #f3cf1f',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-          {/* Listado de Grupos estilo referencia */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {activeTab === 'groups' ? (
-              filteredGroups.map((group) => {
-                const isSelected = activeChat.type === 'group' && activeChat.data.id === group.id;
-                const isFull = group.active >= group.max;
-                return (
-                  <div
-                    key={group.id}
-                    onClick={() => {
-                      if (isFull) return alert('⚠️ Sala llena (15/15)');
-                      setActiveChat({ type: 'group', data: group });
-                      setMessages([]);
-                    }}
-                    style={{
-                      background: isSelected ? 'rgba(243, 207, 31, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isSelected ? '2px solid #ff2a95' : '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '14px',
-                      padding: '12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      position: 'relative',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '12px',
-                      right: '12px',
-                      background: isFull ? '#ff2a95' : '#161517',
-                      color: isFull ? '#fff' : '#f3cf1f',
-                      border: '1px solid #f3cf1f',
-                      padding: '3px 8px',
-                      borderRadius: '99px',
-                      fontSize: '0.7rem',
-                      fontWeight: 800
-                    }}>
-                      {group.active}/{group.max}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <img
-                        src={`/grupos_fotos/${group.name}.jpg`}
-                        alt={group.name}
-                        onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(group.name)}&background=f3cf1f&color=161517`; }}
-                        style={{
-                          width: '52px',
-                          height: '52px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '2px solid #f3cf1f',
-                          flexShrink: 0
-                        }}
-                      />
-                      <div style={{ overflow: 'hidden', paddingRight: '40px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#f3cf1f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {group.name}
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: '#9ca3af', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: '2px' }}>
-                          {group.desc}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              filteredUsers.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.82rem' }}>
-                  Nadie más conectado ahora mismo.
-                </div>
-              ) : (
-                filteredUsers.map((person) => {
-                  const isSelected = activeChat.type === 'direct' && activeChat.data.socketId === person.socketId;
-                  const personPhoto = person.photo || person.photoURL || person.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(person.username)}&background=f3cf1f&color=161517&bold=true`;
+            {/* Listado de Grupos */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {activeTab === 'groups' ? (
+                filteredGroups.map((group) => {
+                  const isSelected = activeChat.type === 'group' && activeChat.data.id === group.id;
+                  const isFull = group.active >= group.max;
                   return (
                     <div
-                      key={person.socketId}
+                      key={group.id}
                       onClick={() => {
-                        setActiveChat({ type: 'direct', data: person });
+                        if (isFull) return alert('⚠️ Sala llena (15/15)');
+                        setActiveChat({ type: 'group', data: group });
                         setMessages([]);
+                        if (isMobile) setMobileView('chat');
                       }}
                       style={{
-                        background: isSelected ? 'rgba(243, 207, 31, 0.15)' : 'transparent',
-                        border: isSelected ? '2px solid #ff2a95' : '1px solid transparent',
-                        borderRadius: '10px',
-                        padding: '10px 12px',
+                        background: isSelected ? 'rgba(243, 207, 31, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                        border: isSelected ? '2px solid #ff2a95' : '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '14px',
+                        padding: '12px',
                         cursor: 'pointer',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
+                        flexDirection: 'column',
+                        gap: '8px',
+                        position: 'relative',
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: isFull ? '#ff2a95' : '#161517',
+                        color: isFull ? '#fff' : '#f3cf1f',
+                        border: '1px solid #f3cf1f',
+                        padding: '3px 8px',
+                        borderRadius: '99px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800
+                      }}>
+                        {group.active}/{group.max}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <img
-                          src={personPhoto}
-                          alt={person.username}
-                          onError={(e) => {
-                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.username)}&background=f3cf1f&color=161517&bold=true`;
-                          }}
+                          src={`/grupos_fotos/${group.name}.jpg`}
+                          alt={group.name}
+                          onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(group.name)}&background=f3cf1f&color=161517`; }}
                           style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '52px',
+                            height: '52px',
                             borderRadius: '50%',
                             objectFit: 'cover',
-                            border: '2px solid #ff2a95',
+                            border: '2px solid #f3cf1f',
                             flexShrink: 0
                           }}
                         />
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f3cf1f' }}>
-                            {person.username}
+                        <div style={{ overflow: 'hidden', paddingRight: '40px' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#f3cf1f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {group.name}
                           </div>
-                          <div style={{ fontSize: '0.72rem', color: '#ff2a95' }}>
-                            ● En línea
+                          <div style={{ fontSize: '0.78rem', color: '#9ca3af', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: '2px' }}>
+                            {group.desc}
                           </div>
                         </div>
                       </div>
                     </div>
                   );
                 })
-              )
-            )}
-          </div>
-        </aside>
+              ) : (
+                filteredUsers.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.82rem' }}>
+                    Nadie más conectado ahora mismo.
+                  </div>
+                ) : (
+                  filteredUsers.map((person) => {
+                    const isSelected = activeChat.type === 'direct' && activeChat.data.socketId === person.socketId;
+                    const personPhoto = person.photo || person.photoURL || person.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(person.username)}&background=f3cf1f&color=161517&bold=true`;
+                    return (
+                      <div
+                        key={person.socketId}
+                        onClick={() => {
+                          setActiveChat({ type: 'direct', data: person });
+                          setMessages([]);
+                          if (isMobile) setMobileView('chat');
+                        }}
+                        style={{
+                          background: isSelected ? 'rgba(243, 207, 31, 0.15)' : 'transparent',
+                          border: isSelected ? '2px solid #ff2a95' : '1px solid transparent',
+                          borderRadius: '10px',
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img
+                            src={personPhoto}
+                            alt={person.username}
+                            onError={(e) => {
+                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.username)}&background=f3cf1f&color=161517&bold=true`;
+                            }}
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              border: '2px solid #ff2a95',
+                              flexShrink: 0
+                            }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f3cf1f' }}>
+                              {person.username}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#ff2a95' }}>
+                              ● En línea
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )
+              )}
+            </div>
+          </aside>
+        )}
 
         {/* COLUMNA 2: Zona Central de Conversación */}
-        <section style={{
-          flex: 1,
-          background: '#090c0e',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRight: '2px solid rgba(243, 207, 31, 0.2)'
-        }}>
-          {/* Cabecera del Chat Activo */}
-          <div style={{
-            height: '68px',
-            background: '#161517',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 20px',
-            flexShrink: 0
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img
-                src={
-                  activeChat.type === 'group'
-                    ? `/grupos_fotos/${activeChat.data.name}.jpg`
-                    : (activeChat.data.photo || activeChat.data.photoURL || activeChat.data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.data.username || 'U')}&background=f3cf1f&color=161517`)
-                }
-                alt="Avatar"
-                onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=Chat&background=f3cf1f&color=161517`; }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid #f3cf1f'
-                }}
-              />
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#f3cf1f' }}>
-                  {activeChat.data.name || activeChat.data.username}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#ff2a95', fontWeight: 600 }}>
-                  {activeChat.type === 'group' ? '👥 Sala VIP (15 máx) • Destrucción en RAM' : '🟢 Chat Privado • Destrucción en RAM'}
-                </div>
-              </div>
-            </div>
-
-            {activeChat.type === 'group' && (
-              <button
-                type="button"
-                onClick={() => alert('🎙️ Conectando a la llamada vocal grupal...')}
-                style={{
-                  background: '#f3cf1f',
-                  border: '2px solid #ff2a95',
-                  color: '#161517',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(243, 207, 31, 0.3)'
-                }}
-              >
-                🎙️ Llamada Grupal
-              </button>
-            )}
-          </div>
-
-          {/* Historial de Mensajes (Con Foto real y Nombre de quien escribe) */}
-          <div style={{
+        {showCol2 && (
+          <section style={{
             flex: 1,
-            overflowY: 'auto',
-            padding: '20px',
+            width: isMobile ? '100%' : 'auto',
+            background: '#090c0e',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            overflow: 'hidden',
+            borderRight: isMobile ? 'none' : '2px solid rgba(243, 207, 31, 0.2)',
+            boxSizing: 'border-box'
           }}>
-            {messages.map((msg) => {
-              const isMe = msg.sender === user.username;
-              const msgAvatar = isMe
-                ? currentUserPhoto
-                : (msg.senderPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender)}&background=f3cf1f&color=161517&bold=true`);
-
-              return (
-                <div
-                  key={msg.id}
+            {/* Cabecera del Chat Activo */}
+            <div style={{
+              height: '68px',
+              background: '#161517',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: isMobile ? '0 12px' : '0 20px',
+              flexShrink: 0,
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                {isMobile && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('list')}
+                    style={{
+                      background: 'rgba(243, 207, 31, 0.15)',
+                      border: '1px solid #f3cf1f',
+                      color: '#f3cf1f',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    ←
+                  </button>
+                )}
+                <img
+                  src={
+                    activeChat.type === 'group'
+                      ? `/grupos_fotos/${activeChat.data.name}.jpg`
+                      : (activeChat.data.photo || activeChat.data.photoURL || activeChat.data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.data.username || 'U')}&background=f3cf1f&color=161517`)
+                  }
+                  alt="Avatar"
+                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=Chat&background=f3cf1f&color=161517`; }}
                   style={{
-                    alignSelf: isMe ? 'flex-end' : 'flex-start',
-                    maxWidth: '70%',
-                    background: isMe ? '#ff2a95' : '#161517',
-                    border: '1px solid #f3cf1f',
-                    borderRadius: '14px',
-                    padding: '12px 16px',
-                    color: isMe ? '#fff' : '#f3cf1f',
-                    fontSize: '0.88rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #f3cf1f',
+                    flexShrink: 0
                   }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <img
-                      src={msgAvatar}
-                      alt={msg.sender}
-                      onError={(e) => {
-                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender)}&background=f3cf1f&color=161517&bold=true`;
-                      }}
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '1px solid #f3cf1f'
-                      }}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: isMe ? '#ffe4e6' : '#ff2a95', fontWeight: 700 }}>
-                      {msg.sender}
-                    </span>
+                />
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#f3cf1f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeChat.data.name || activeChat.data.username}
                   </div>
-
-                  {msg.text && <div style={{ wordBreak: 'break-word', paddingLeft: '32px' }}>{msg.text}</div>}
-                  {msg.photo && (
-                    <div style={{ marginTop: '8px', paddingLeft: '32px' }} onContextMenu={(e) => e.preventDefault()}>
-                      <img
-                        src={msg.photo}
-                        alt="Efímera"
-                        draggable="false"
-                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', borderRadius: '8px', pointerEvents: 'none' }}
-                      />
-                    </div>
-                  )}
+                  <div style={{ fontSize: '0.72rem', color: '#ff2a95', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeChat.type === 'group' ? '👥 Sala VIP (15 máx) • Destrucción en RAM' : '🟢 Chat Privado • Destrucción en RAM'}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
 
-          {/* Vista previa de foto */}
-          {selectedPhoto && (
-            <div style={{ padding: '8px 20px', background: '#161517', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3cf1f' }}>
-              <span style={{ fontSize: '0.78rem', color: '#f3cf1f', fontWeight: 700 }}>🛡️ Imagen WebP protegida (máx 5MB) lista</span>
-              <button type="button" onClick={() => setSelectedPhoto(null)} style={{ background: 'none', border: 'none', color: '#ff2a95', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>✕ Quitar</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                {isMobile && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('info')}
+                    style={{
+                      background: 'rgba(255, 42, 149, 0.15)',
+                      border: '1px solid #ff2a95',
+                      color: '#ff2a95',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                    title="Ver descripción y normas"
+                  >
+                    ℹ️
+                  </button>
+                )}
+
+                {activeChat.type === 'group' && (
+                  <button
+                    type="button"
+                    onClick={() => alert('🎙️ Conectando a la llamada vocal grupal...')}
+                    style={{
+                      background: '#f3cf1f',
+                      border: '2px solid #ff2a95',
+                      color: '#161517',
+                      padding: isMobile ? '8px 10px' : '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(243, 207, 31, 0.3)'
+                    }}
+                  >
+                    {isMobile ? '🎙️' : '🎙️ Llamada Grupal'}
+                  </button>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Formulario Inferior de Envío */}
-          <form onSubmit={handleSendMessage} style={{
-            padding: '14px 20px',
-            background: '#161517',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            gap: '10px',
-            alignItems: 'center',
-            flexShrink: 0
-          }}>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current.click()}
-              style={{
-                background: '#f3cf1f',
-                border: '1px solid #ff2a95',
-                color: '#161517',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 800
-              }}
-              title="Adjuntar foto (Máx 5MB)"
-            >
-              📷
-            </button>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              ref={fileInputRef}
-              onChange={handlePhotoUpload}
-              style={{ display: 'none' }}
-            />
+            {/* Historial de Mensajes (Con Foto real y Nombre de quien escribe) */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: isMobile ? '14px' : '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              {messages.map((msg) => {
+                const isMe = msg.sender === user.username;
+                const msgAvatar = isMe
+                  ? currentUserPhoto
+                  : (msg.senderPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender)}&background=f3cf1f&color=161517&bold=true`);
 
-            <input
-              type="text"
-              placeholder="Escribe un mensaje efímero..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              style={{
-                flex: 1,
-                background: '#090c0e',
-                border: '1px solid #f3cf1f',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                color: '#fff',
-                fontSize: '0.88rem',
-                outline: 'none'
-              }}
-            />
+                return (
+                  <div
+                    key={msg.id}
+                    style={{
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      maxWidth: isMobile ? '85%' : '70%',
+                      background: isMe ? '#ff2a95' : '#161517',
+                      border: '1px solid #f3cf1f',
+                      borderRadius: '14px',
+                      padding: '12px 16px',
+                      color: isMe ? '#fff' : '#f3cf1f',
+                      fontSize: '0.88rem',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <img
+                        src={msgAvatar}
+                        alt={msg.sender}
+                        onError={(e) => {
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender)}&background=f3cf1f&color=161517&bold=true`;
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '1px solid #f3cf1f'
+                        }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: isMe ? '#ffe4e6' : '#ff2a95', fontWeight: 700 }}>
+                        {msg.sender}
+                      </span>
+                    </div>
 
-            <button
-              type="submit"
-              style={{
-                background: '#ff2a95',
-                border: '2px solid #f3cf1f',
-                color: '#fff',
-                padding: '10px 22px',
-                borderRadius: '10px',
-                fontWeight: 800,
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(255, 42, 149, 0.4)'
-              }}
-            >
-              Enviar
-            </button>
-          </form>
-        </section>
+                    {msg.text && <div style={{ wordBreak: 'break-word', paddingLeft: '32px' }}>{msg.text}</div>}
+                    {msg.photo && (
+                      <div style={{ marginTop: '8px', paddingLeft: '32px' }} onContextMenu={(e) => e.preventDefault()}>
+                        <img
+                          src={msg.photo}
+                          alt="Efímera"
+                          draggable="false"
+                          style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', borderRadius: '8px', pointerEvents: 'none' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Vista previa de foto */}
+            {selectedPhoto && (
+              <div style={{ padding: '8px 20px', background: '#161517', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3cf1f' }}>
+                <span style={{ fontSize: '0.78rem', color: '#f3cf1f', fontWeight: 700 }}>🛡️ Imagen WebP protegida (máx 5MB) lista</span>
+                <button type="button" onClick={() => setSelectedPhoto(null)} style={{ background: 'none', border: 'none', color: '#ff2a95', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>✕ Quitar</button>
+              </div>
+            )}
+
+            {/* Formulario Inferior de Envío */}
+            <form onSubmit={handleSendMessage} style={{
+              padding: isMobile ? '10px 12px' : '14px 20px',
+              background: '#161517',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              gap: isMobile ? '8px' : '10px',
+              alignItems: 'center',
+              flexShrink: 0,
+              boxSizing: 'border-box'
+            }}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current.click()}
+                style={{
+                  background: '#f3cf1f',
+                  border: '1px solid #ff2a95',
+                  color: '#161517',
+                  padding: isMobile ? '10px 12px' : '10px 14px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  flexShrink: 0
+                }}
+                title="Adjuntar foto (Máx 5MB)"
+              >
+                📷
+              </button>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                style={{ display: 'none' }}
+              />
+
+              <input
+                type="text"
+                placeholder="Escribe un mensaje efímero..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: '#090c0e',
+                  border: '1px solid #f3cf1f',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  color: '#fff',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+              />
+
+              <button
+                type="submit"
+                style={{
+                  background: '#ff2a95',
+                  border: '2px solid #f3cf1f',
+                  color: '#fff',
+                  padding: isMobile ? '10px 16px' : '10px 22px',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(255, 42, 149, 0.4)',
+                  flexShrink: 0
+                }}
+              >
+                Enviar
+              </button>
+            </form>
+          </section>
+        )}
 
         {/* COLUMNA 3: Panel Derecho (Descripción extendida y Normas) */}
-        <aside style={{
-          width: '320px',
-          background: '#161517',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '24px 16px',
-          boxSizing: 'border-box',
-          flexShrink: 0,
-          overflowY: 'auto'
-        }}>
-          <img
-            src={
-              activeChat.type === 'group'
-                ? `/grupos_fotos/${activeChat.data.name}.jpg`
-                : (activeChat.data.photo || activeChat.data.photoURL || activeChat.data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.data.username || 'W')}&background=f3cf1f&color=161517`)
-            }
-            alt="Avatar"
-            onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=W&background=f3cf1f&color=161517`; }}
-            style={{
-              width: '90px',
-              height: '90px',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '3px solid #f3cf1f',
-              marginBottom: '12px',
-              boxShadow: '0 0 20px rgba(243, 207, 31, 0.4)'
-            }}
-          />
-          
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f3cf1f', marginBottom: '4px', textAlign: 'center' }}>
-            {activeChat.data.name || activeChat.data.username}
-          </h3>
-          <p style={{ fontSize: '0.78rem', color: '#ff2a95', marginBottom: '20px', fontWeight: 700 }}>
-            ● Cifrado de extremo a extremo
-          </p>
+        {showCol3 && (
+          <aside style={{
+            width: isMobile ? '100%' : '320px',
+            background: '#161517',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: '24px 16px',
+            boxSizing: 'border-box',
+            flexShrink: 0,
+            overflowY: 'auto'
+          }}>
+            {isMobile && (
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setMobileView('chat')}
+                  style={{
+                    background: 'rgba(243, 207, 31, 0.15)',
+                    border: '1px solid #f3cf1f',
+                    color: '#f3cf1f',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Volver al chat
+                </button>
+              </div>
+            )}
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Descripción del grupo (Textos largos) */}
-            <div style={{ background: 'rgba(243, 207, 31, 0.08)', border: '1px solid #f3cf1f', padding: '12px', borderRadius: '12px', fontSize: '0.8rem' }}>
-              <div style={{ color: '#ff2a95', marginBottom: '4px', fontWeight: 800 }}>Descripción del Grupo</div>
-              <div style={{ color: '#fff', lineHeight: 1.4 }}>
-                {activeChat.data.desc || 'Sala privada de chat efímero cifrado en RAM con estrictas normas de moderación.'}
+            <img
+              src={
+                activeChat.type === 'group'
+                  ? `/grupos_fotos/${activeChat.data.name}.jpg`
+                  : (activeChat.data.photo || activeChat.data.photoURL || activeChat.data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.data.username || 'W')}&background=f3cf1f&color=161517`)
+              }
+              alt="Avatar"
+              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=W&background=f3cf1f&color=161517`; }}
+              style={{
+                width: '90px',
+                height: '90px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '3px solid #f3cf1f',
+                marginBottom: '12px',
+                boxShadow: '0 0 20px rgba(243, 207, 31, 0.4)'
+              }}
+            />
+            
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f3cf1f', marginBottom: '4px', textAlign: 'center' }}>
+              {activeChat.data.name || activeChat.data.username}
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: '#ff2a95', marginBottom: '20px', fontWeight: 700 }}>
+              ● Cifrado de extremo a extremo
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Descripción del grupo (Textos largos) */}
+              <div style={{ background: 'rgba(243, 207, 31, 0.08)', border: '1px solid #f3cf1f', padding: '12px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                <div style={{ color: '#ff2a95', marginBottom: '4px', fontWeight: 800 }}>Descripción del Grupo</div>
+                <div style={{ color: '#fff', lineHeight: 1.4 }}>
+                  {activeChat.data.desc || 'Sala privada de chat efímero cifrado en RAM con estrictas normas de moderación.'}
+                </div>
+              </div>
+
+              {/* Aforo y Capacidad */}
+              <div style={{ background: 'rgba(255, 42, 149, 0.08)', border: '1px solid #ff2a95', padding: '12px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                <div style={{ color: '#f3cf1f', marginBottom: '4px', fontWeight: 800 }}>Aforo / Capacidad</div>
+                <div style={{ color: '#fff', fontWeight: 700 }}>
+                  {activeChat.type === 'group' ? 'Máximo 15 Personas' : 'Chat Privado 1 a 1'}
+                </div>
+              </div>
+
+              {/* 5 Normas de Seguridad */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(243, 207, 31, 0.3)', padding: '12px', borderRadius: '12px', fontSize: '0.78rem' }}>
+                <div style={{ color: '#f3cf1f', marginBottom: '6px', fontWeight: 800, textAlign: 'center', textTransform: 'uppercase' }}>
+                  ⚠️ Normas de Seguridad (Expulsión Automática)
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px', color: '#e5e7eb', lineHeight: 1.3 }}>
+                  <li><b>Regla 1:</b> No faltarle al respeto a nadie.</li>
+                  <li><b>Regla 2:</b> No Nude ni Menores de edad.</li>
+                  <li><b>Regla 3:</b> Cero acoso, spam o enlaces externos maliciosos.</li>
+                  <li><b>Regla 4:</b> Mantener la privacidad de los miembros del chat.</li>
+                  <li><b>Regla 5:</b> Respetar la dinámica efímera y los límites de la sala.</li>
+                </ul>
               </div>
             </div>
-
-            {/* Aforo y Capacidad */}
-            <div style={{ background: 'rgba(255, 42, 149, 0.08)', border: '1px solid #ff2a95', padding: '12px', borderRadius: '12px', fontSize: '0.8rem' }}>
-              <div style={{ color: '#f3cf1f', marginBottom: '4px', fontWeight: 800 }}>Aforo / Capacidad</div>
-              <div style={{ color: '#fff', fontWeight: 700 }}>
-                {activeChat.type === 'group' ? 'Máximo 15 Personas' : 'Chat Privado 1 a 1'}
-              </div>
-            </div>
-
-            {/* 5 Normas de Seguridad */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(243, 207, 31, 0.3)', padding: '12px', borderRadius: '12px', fontSize: '0.78rem' }}>
-              <div style={{ color: '#f3cf1f', marginBottom: '6px', fontWeight: 800, textAlign: 'center', textTransform: 'uppercase' }}>
-                ⚠️ Normas de Seguridad (Expulsión Automática)
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px', color: '#e5e7eb', lineHeight: 1.3 }}>
-                <li><b>Regla 1:</b> No faltarle al respeto a nadie.</li>
-                <li><b>Regla 2:</b> No Nude ni Menores de edad.</li>
-                <li><b>Regla 3:</b> Cero acoso, spam o enlaces externos maliciosos.</li>
-                <li><b>Regla 4:</b> Mantener la privacidad de los miembros del chat.</li>
-                <li><b>Regla 5:</b> Respetar la dinámica efímera y los límites de la sala.</li>
-              </ul>
-            </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
     </div>
   );
