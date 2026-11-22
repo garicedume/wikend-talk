@@ -5,6 +5,7 @@ import imageInicio from '../assets/image_inicio.svg';
 import imageCrearCuenta from '../assets/image_crearcuenta.svg';
 
 const RECAPTCHA_SITE_KEY = '6LcrbyUuAAAAAJU6XO_a1WsBUbBsx5LiyUxBnJ7r';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export default function AuthScreen({ onAuthSuccess, onOpenLegal }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -85,7 +86,7 @@ export default function AuthScreen({ onAuthSuccess, onOpenLegal }) {
     }
 
     setLoading(true);
-    const endpoint = isRegister ? 'http://localhost:5000/api/auth/register' : 'http://localhost:5000/api/auth/login';
+    const endpoint = isRegister ? `${API_URL}/api/auth/register` : `${API_URL}/api/auth/login`;
 
     try {
       const res = await fetch(endpoint, {
@@ -261,7 +262,7 @@ export default function AuthScreen({ onAuthSuccess, onOpenLegal }) {
                 <div style={styles.googleInnerScaler}>
                   <GoogleLogin
                     onSuccess={(credentialResponse) => {
-                      fetch('http://localhost:5000/api/auth/google', {
+                      fetch(`${API_URL}/api/auth/google`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: credentialResponse.credential })
@@ -395,7 +396,7 @@ const styles = {
   },
   header: {
     width: '100%',
-    padding: 'clamp(6px, 1.2vh, 14px) 4% 0 4%', // Alineado más a la izquierda para armonizar con la ilustración
+    padding: 'clamp(6px, 1.2vh, 14px) 4% 0 4%',
     display: 'flex',
     alignItems: 'center',
     flexShrink: 0,
@@ -405,7 +406,7 @@ const styles = {
   brandWrapper: {
     display: 'flex',
     alignItems: 'center',
-    paddingLeft: '1.5%' // Ajuste fino hacia el eje izquierdo
+    paddingLeft: '1.5%'
   },
   logoImg: {
     height: 'clamp(38px, 6vh, 68px)',
@@ -428,10 +429,10 @@ const styles = {
   },
   leftCol: {
     display: 'flex',
-    justifyContent: 'flex-start', // Movido hacia el lado del logo
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingLeft: '2%' // Desplazamiento adicional hacia la izquierda para alinear con el brand
+    paddingLeft: '2%'
   },
   illustration: {
     width: 'auto',
@@ -445,7 +446,7 @@ const styles = {
     justifyContent: 'center',
     width: '100%',
     minWidth: 0,
-    transform: 'translateY(-10px)' // Ligeramente elevado para evitar cualquier corte inferior
+    transform: 'translateY(-10px)'
   },
   modalCard: {
     width: '100%',
@@ -637,7 +638,7 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     gap: 'clamp(8px, 1.5vw, 16px)',
-    fontSize: '12px', // <--- Tamaño ajustado exactamente a 12px
+    fontSize: '12px',
     color: '#5277f7',
     textAlign: 'center',
     padding: 'clamp(4px, 1vh, 10px) 20px',
