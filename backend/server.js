@@ -10,7 +10,16 @@ const rateLimit = require('express-rate-limit');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-const serviceAccount = require(process.env.FIREBASE_CREDENTIALS);
+// Carga segura de Firebase compatible con entorno local y la nube (Render/Vercel)
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Si existe la variable de entorno en texto plano (en la nube)
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // Si estás trabajando de forma local con el archivo físico
+  const credentialPath = process.env.FIREBASE_CREDENTIALS || './serviceAccountKey.json.json';
+  serviceAccount = require(path.resolve(__dirname, '../', credentialPath));
+}
 
 initializeApp({
   credential: cert(serviceAccount)
